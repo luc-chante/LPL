@@ -1,0 +1,4 @@
+LPL
+===
+
+Luc PHP Library
