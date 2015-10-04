@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<phpdoc>
+    <title>Luc PHP Library</title>
+    <parser>
+        <target>./doc</target>
+        <encoding>utf8</encoding>
+    </parser>
+    <transformer>
+        <target>data/output</target>
+    </transformer>
+    <files>
+        <directory>./src</directory>
+    </files>
+</phpdoc>

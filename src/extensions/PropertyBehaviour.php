@@ -15,43 +15,42 @@ namespace extensions {
      * trait PropertyBehaviour
      */
     trait PropertyBehaviour {
+        use AnnotationEngine;
+
         /**
          * Handles getter for properties
          */
         public final function __get($property) {
-            $reflection = new \ReflectionProperty($this, $property);
-            if (AnnotationEngine::getAnnotation($reflection, "get")) {
-                if (method_exists ($this, "_get_$property")) {
-                    return call_user_func ([ 
-                            $this,
-                            "_get_$property" 
-                    ]);
-                }
-                $reflection->setAccessible(true);
-                return $reflection->getValue($this);
+            $getter = static::getPropertyAnnotation("get", "_$property");
+            if (!$getter) {
+                throw new \ReflectionException (get_class ($this) . " has no property '$property'");
             }
-            throw new \ReflectionException (get_class ($this) . " has no property '$property'");
+
+            if ($getter === true) {
+                $property = new \ReflectionProperty($this, "_$property");
+                $property->setAccessible(true);
+                return $property->getValue($this);
+            }
+
+            return $this->$getter[0]();
         }
 
         /**
          * Handles setter for properties
          */
         public final function __set($property, $value) {
-            $reflection = new \ReflectionProperty($this, $property);
-            if (AnnotationEngine::getAnnotation($reflection, "set")) {
-                if (method_exists ($this, "_set_$property")) {
-                    call_user_func ([ 
-                            $this,
-                            "_set_$property" 
-                    ], $value);
-                }
-                else {
-                    $reflection->setAccessible(true);
-                    $reflection->setValue($this, $value);
-                }
+            $setter = static::getPropertyAnnotation("set", "_$property");
+            if (!$setter) {
+                throw new \ReflectionException (get_class ($this) . " has no property '$property'");
+            }
+
+            if ($setter === true) {
+                $property = new \ReflectionProperty($this, "_$property");
+                $property->setAccessible(true);
+                $property->setValue($this, $value);
             }
             else {
-                throw new \ReflectionException (get_class ($this) . " has no property '$property'");
+                $this->$setter[0]($value);
             }
         }
     }
