@@ -2,11 +2,15 @@
 <phpdoc>
     <title>Luc PHP Library</title>
     <parser>
-        <target>./doc</target>
         <encoding>utf8</encoding>
+        <markers>
+            <item>TODO</item>
+            <item>FIXME</item>
+        </markers>
     </parser>
     <transformer>
-        <target>data/output</target>
+        <target>./doc</target>
+        <template name="responsive" />
     </transformer>
     <files>
         <directory>./src</directory>

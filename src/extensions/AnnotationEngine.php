@@ -29,7 +29,7 @@ namespace extensions {
 	* The last 2 cases return an array, with association key/value for the last exemple.
 	*/
 	trait AnnotationEngine {
-		
+
 		/**
 		* Looks for a class annotation
 		*
@@ -44,7 +44,7 @@ namespace extensions {
 			do {
 				$result = static::getAnnotation($class, $annotation);
 				$class = $class->getParentClass();
-			} while ($class && $recursive);
+			} while ($result === false && $class && $recursive);
 			
 			return $result;
 		}
@@ -63,9 +63,9 @@ namespace extensions {
 			
 			do {
 				$reflector = $class->getProperty($property);
-				$result = static::getAnnotation($reflector, $annotation);
+				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation);
 				$class = $class->getParentClass();
-			} while ($class && $recursive);
+			} while ($result === false && $class && $recursive);
 			
 			return $result;
 		}
@@ -84,92 +84,65 @@ namespace extensions {
 			
 			do {
 				$reflector = $class->getMethod($method);
-				$result = static::getAnnotation($reflector, $annotation);
+				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation);
 				$class = $class->getParentClass();
-			} while ($class && $recursive);
-			
-			return $result;
-		}
-		
-		/**
-		 * @internal
-		 */
-		private static function parseArgValue($value) {
-            $key = null;
-            if (strpos("=", $value) !== false) {
-                list($key, $value) = explode($value, "=");
-                $key = trim($key);
-            }
-			$value = trim($value);
-			
-			// Match string '...' | "..."
-			if (preg_match('/^(["\'])(.*)\g{-2}$/', $value, $matches)) {
-				$value = $matches[2];
-			}
-			// Match integer
-			else if (ctype_digit($value)) {
-				$value = intval($value);
-			}
-			// Match float
-			else if (is_numeric($value)) {
-				$value = floatval($value);
-			}
-			// Match boolean
-			else if (preg_match('/^(true|false)$/i', $value)) {
-				$value = $value == "true";
-			}
-            // Match constants
-			else {
-			    $values = explode("|", $value);
-			    if (count($values) == 1) {
-				    $value = constant($values[0]);
-			    }
-			    else {
-			        $value = array_reduce($values, function($carry, $constant) {
-				        return $carry | constant(trim($constant));
-			        }, 0);
-			    }
-			}
+			} while ($result === false && $class && $recursive);
 
-			return [ $key, $value ];
+			return $result;
 		}
 		
 		/**
 		 * Return the result of the search for the given annotation into the given reflector.
 		 *
-		 * @param \ReflectionClass|\ReflectionProperty|\ReflectionMethod
-		 *                                      $reflector  The reflector in which looking for
-		 * @param string                        $annotation The annotation to look for
+		 * @param \Reflector $reflector  The reflector in which looking for
+		 * @param string     $annotation The annotation to look for
 		 *
 		 * @return mixed
 		 */
-		private static function getAnnotation($reflector, $annotation) {
-			$doc_comment = substr($reflector->getDocComment(), 2, -2);
-			
-            $pattern = '/^[\s\*]*@' . $annotation . '(\(\))?\s*$/m';
-			if (preg_match($pattern, $doc_comment)) {
-				return true;
-			}
-			
-			$pattern = '/^[\s\*]*@' . $annotation . '\((.+)\)\s*$/m';
-			if (!preg_match($pattern, $doc_comment, $matches)) {
+		private static function getAnnotation(\Reflector $reflector, $annotation) {
+            $doc_comment = str_replace("\r", "", substr($reflector->getDocComment(), 2, -2));
+
+            $varname  = '(["\']?)[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\g{-1}';
+            $string1  = '"(?:\\\\"|[^"])+"';
+            $string2  = "'(?:\\\\'|[^'])+'";
+            $integer  = '[+-]?(?:0|[1-9]\d*|0[xX][0-9a-fA-F]+|0b[01]+|0[0-7]+)';
+            $float    = '[+-]?(?:\d+|\d*\.\d+|\d+\.\d*)(?:[eE][+-]?\d+)?';
+            $constant = '[a-zA-Z_]\w*(::[a-zA-Z_]\w*)?';
+            $scalar   = implode("|", [ $string1, $string2, $integer, $float, $constant ]);
+
+            $index = "($varname|$constant)";
+            $item  = "[ \t]*(${index}[ \t]*=>[ \t]*)?($scalar|(?&array))[ \t]*";
+            $array = "(?P<array>\[$item(,$item)*\])";
+            
+            $param = "[ \t]*(${varname}[ \t]*=[ \t]*)?($scalar|$array)[ \t]*";
+
+            $key   = "[ \t]*(?P<key>$varname)[ \t]*";
+            $value = "[ \t]*(?<value>$scalar|$array)[ \t]*";
+            $arg   = "(^|,)($key=)?$value(?=,|$)";
+
+            $pattern = "/^[ \t*]*@$annotation(?P<params>([(].*[)])?)[ \t*]*\$/m";
+            if (!preg_match($pattern, $doc_comment, $matches)) {
                 return false;
             }
+            $arguments = trim($matches["params"], "()");
 
-            $args = explode(",", $matches[1]);
+            if (!preg_match("/^($arg)*$/", $arguments)) {
+                throw new \InvalidArgumentException("The annotation '$annotation' has bad format arguments");
+            }
+
+            preg_match_all("/$arg/", $arguments, $matches);
             $params = [ ];
-            foreach ($args as $arg) {
-                list($key, $value) = static::parseArgValue($arg);
-                if (is_null($key)) {
-                    $params[] = $value;
+            foreach ($matches["key"] as $i => $key) {
+                $val = eval("return " . $matches["value"][$i] . ";");
+                if (empty($key)) {
+                    $params[] = $val;
                 }
                 else {
-                    $params[$key] = $value;
+                    $params[$key] = $val;
                 }
             }
-			
-			return $params;
-		}
+            return empty($params) ? true : $params;
+        }
 	}
 }
 
