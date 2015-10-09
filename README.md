@@ -10,7 +10,3 @@ Requirements
 
 Additionnal info
 ----------------
-
-I use to work with linux, so I can't garantee it will be completely compatible
-under Windows.  
-
