@@ -12,37 +12,57 @@
  */
 namespace extensions {
 	/**
-	* AnnotationEngine trait
-	*
-	* This trait provides simples methods to access to annotations
-	* 
-	* Annotations are specific formated attributes in the doc comment of a
-	* class, a property or a method.
-	*
-	* Accepted annotation format is :
-	*  - @MyAnnotation
-	*  - @MyAnnotation() // identical to precedent
-	*  - @MyAnnotation("string arg", 1, 1.25, true, MyClass::CONTANT)
-	*  - @MyAnnotation(group = "admin", ...)
-	*
-	* In the 2 first cases, it will return true if the annotation is found, false otherwise.
-	* The last 2 cases return an array, with association key/value for the last exemple.
-	*/
+	 * AnnotationEngine trait
+	 *
+	 * This trait provides simples methods to access to annotations
+	 * 
+	 * Annotations are specific formated attributes in the doc comment of a
+	 * class, a property or a method.
+	 *
+	 * Accepted annotation format is :
+	 *  - @MyAnnotation
+	 *  - @MyAnnotation()
+	 *  - @MyAnnotation("string arg", 1, 1.25, true, MyClass::CONTANT)
+	 *  - @MyAnnotation(group = "admin", ...)
+	 * 
+     * ```php
+	 * /**
+     *  * @Foo
+     *  * @Bar()
+     *  * @Test(1, db = "bd_name", options = [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ])
+     *  * @property int $id The object ID
+     *  * /
+     * class ExampleClass {
+     * }
+     * 
+     * var_dump(ExampleClass::getClassAnnotation("Foo"));
+     * // => true
+     * var_dump(ExampleClass::getClassAnnotation("Bar"));
+     * // => true
+     * var_dump(ExampleClass::getClassAnnotation("Test"));
+     * // => [ 1, "db" => "bd_name", "options" => [ 3 => 2 ] ]
+     * ar_dump(ExampleClass::getClassAnnotation("Nothing"));
+     * // => false
+     * ar_dump(ExampleClass::getClassAnnotation("property"));
+     * // => false
+     * ```
+	 */
 	trait AnnotationEngine {
 
 		/**
-		* Looks for a class annotation
-		*
-		* @param string $annotation The annotation to look for
-		* @param bool   $recursive  If it looks up into parent classes
-		*
-		* @return bool|array
-		*/
-		public static function getClassAnnotation($annotation, $recursive = false) {
+		 * Looks for a class annotation
+		 *
+		 * @param string    $annotation The annotation to look for
+		 * @param bool      $recursive  If it looks up into parent classes
+         * @param \stdClass $context    An object used as context (for example: to discribe callback)
+		 *
+		 * @return bool|array
+		 */
+		public static function getClassAnnotation($annotation, $recursive = false, \stdClass $context = null) {
 			$class = new \ReflectionClass(get_called_class());
 			
 			do {
-				$result = static::getAnnotation($class, $annotation);
+				$result = static::getAnnotation($class, $annotation, $context);
 				$class = $class->getParentClass();
 			} while ($result === false && $class && $recursive);
 			
@@ -55,15 +75,16 @@ namespace extensions {
 		 * @param string $annotation The annotation to look for
 		 * @param string $property   The property in which searching
 		 * @param bool   $recursive  If it looks up into parent classes
+         * @param \stdClass $context    An object used as context (for example: to discribe callback)
 		 *
 		 * @return bool|array
 		 */
-		public static function getPropertyAnnotation($annotation, $property, $recursive = false) {
+		public static function getPropertyAnnotation($annotation, $property, $recursive = false, \stdClass $context = null) {
 			$class = new \ReflectionClass(get_called_class());
 			
 			do {
 				$reflector = $class->getProperty($property);
-				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation);
+				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation, $context);
 				$class = $class->getParentClass();
 			} while ($result === false && $class && $recursive);
 			
@@ -76,15 +97,16 @@ namespace extensions {
 		 * @param string $annotation The annotation to look for
 		 * @param string $method     The method in which searching
 		 * @param bool   $recursive  If it looks up into parent classes
+         * @param \stdClass $context    An object used as context (for example: to discribe callback)
 		 *
 		 * @return bool|array
 		 */
-		public static function getMethodAnnotation($annotation, $method, $recursive = false) {
+		public static function getMethodAnnotation($annotation, $method, $recursive = false, \stdClass $context = null) {
 			$class = new \ReflectionClass(get_called_class());
 			
 			do {
 				$reflector = $class->getMethod($method);
-				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation);
+				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation, $context);
 				$class = $class->getParentClass();
 			} while ($result === false && $class && $recursive);
 
@@ -99,7 +121,7 @@ namespace extensions {
 		 *
 		 * @return mixed
 		 */
-		private static function getAnnotation(\Reflector $reflector, $annotation) {
+		private static function getAnnotation(\Reflector $reflector, $annotation, \stdClass $context) {
             $doc_comment = str_replace("\r", "", substr($reflector->getDocComment(), 2, -2));
 
             $varname  = '(["\']?)[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\g{-1}';
@@ -108,7 +130,8 @@ namespace extensions {
             $integer  = '[+-]?(?:0|[1-9]\d*|0[xX][0-9a-fA-F]+|0b[01]+|0[0-7]+)';
             $float    = '[+-]?(?:\d+|\d*\.\d+|\d+\.\d*)(?:[eE][+-]?\d+)?';
             $constant = '[a-zA-Z_]\w*(::[a-zA-Z_]\w*)?';
-            $scalar   = implode("|", [ $string1, $string2, $integer, $float, $constant ]);
+            $variable = '\\$context';
+            $scalar   = implode("|", [ $string1, $string2, $integer, $float, $constant, $variable ]);
 
             $index = "($varname|$constant)";
             $item  = "[ \t]*(${index}[ \t]*=>[ \t]*)?($scalar|(?&array))[ \t]*";

@@ -16,14 +16,13 @@ namespace extensions {
      * 
      * This is a simple implemtation of the singleton pattern.
      * 
-     * Example :
-     * <code>
+     * ```php
      * class MySingleton {
-     *         use extensions\Singleton;
+     *     use extensions\Singleton;
      * 
-     *         public function __construct($arg = "test") {
-     *             echo $arg;
-     *         }
+     *     public function __construct($arg = "test") {
+     *         echo $arg;
+     *     }
      * }
      * 
      * $singleton = MySingleton::singleton();
@@ -34,7 +33,28 @@ namespace extensions {
      * $s2 = MySingleton::singleton();
      * var_dump($singleton === $s2);
      * // return : true
-     * </code>
+     * ```
+     *
+     * Every class that should be used as a singleton has to use this trait.
+     * ```php
+     * class ParentClass {
+     *     use extensions\Singleton;
+     * }
+     * 
+     * class ChildClass extends ParentClass {
+     * }
+     * 
+     * // You can get a parent single instance
+     * $parent = ParentClass::singleton();
+     * // But not a child one
+     * $child = ChildClass::singleton();
+     * // This will throws a exception (the singleton instance is not accessible)
+     *
+     * // Good implementation
+     * class ChildClass extends ParentClass {
+     *    use extensions\Singleton;
+     * }
+     * ```
      */
     trait Singleton {
         /**
@@ -45,23 +65,21 @@ namespace extensions {
         /**
          * Return the same instance of the class.
          * 
-         * @param mixed $args[optional]
+         * @param mixed $args[optional] Constructor arguments
          * @return object
          */
         public static function singleton() {
-            $class = new \ReflectionClass(get_called_class());
-            $instance = $class->getProperty("instance");
-            $instance->setAccessible(true);
-            if (is_null($instance->getValue())) {
+            if (is_null(static::$instance)) {
+                $class = new \ReflectionClass(get_called_class());
                 switch (func_num_args()) {
-                case 0:
-                    $instance->setValue($class->newInstance());
-                    break;
-                default:
-                    $instance->setValue($class->newInstanceArgs(func_get_args()));
+                    case 0:
+                        static::$instance = $class->newInstance();
+                        break;
+                    default:
+                        static::$instance = $class->newInstanceArgs(func_get_args());
                 }
             }
-            return $instance->getValue();
+            return static::$instance;
         }
     }
 }

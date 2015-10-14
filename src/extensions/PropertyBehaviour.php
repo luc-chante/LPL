@@ -19,38 +19,60 @@ namespace extensions {
 
         /**
          * Handles getter for properties
+         *
+         * @param string $property The property name
+         * @return mixed
          */
         public final function __get($property) {
-            $getter = static::getPropertyAnnotation("get", "_$property");
-            if (!$getter) {
-                throw new \ReflectionException (get_class ($this) . " has no property '$property'");
-            }
+            try {
+                $getter = static::getPropertyAnnotation("get", $property, true, $this);
+                if (!$getter) {
+                    throw new \RuntimeException("The property '$property' is not accessible");
+                }
 
-            if ($getter === true) {
-                $property = new \ReflectionProperty($this, "_$property");
-                $property->setAccessible(true);
-                return $property->getValue($this);
-            }
+                $filter = FILTER_DEFAULT;
+                $options = [ ];
 
-            return $this->$getter[0]();
+                if ($getter !== true) {
+                    $filter = isset($getter["filter"]) ? $getter["filter"] : $getter[0];
+                    
+                    if (count($getter) > 1) {
+                        $options = isset($getter["options"]) ? $getter["options"] : $getter[1];
+                    }
+                }
+
+                return filter_var($this->$property, $filter, $options);
+            }
+            catch (\ReflectionException $e) {
+                throw $e;
+            }
         }
 
         /**
          * Handles setter for properties
          */
         public final function __set($property, $value) {
-            $setter = static::getPropertyAnnotation("set", "_$property");
-            if (!$setter) {
-                throw new \ReflectionException (get_class ($this) . " has no property '$property'");
-            }
+            try {
+                $setter = static::getPropertyAnnotation("set", $property, true, $this);
+                if (!$setter) {
+                    throw new \RuntimeException("The property '$property' is not writable");
+                }
 
-            if ($setter === true) {
-                $property = new \ReflectionProperty($this, "_$property");
-                $property->setAccessible(true);
-                $property->setValue($this, $value);
+                $filter = FILTER_DEFAULT;
+                $options = [ ];
+
+                if ($setter !== true) {
+                    $filter = isset($setter["filter"]) ? $setter["filter"] : $setter[0];
+                    
+                    if (count($setter) > 1) {
+                        $options = isset($setter["options"]) ? $setter["options"] : $setter[1];
+                    }
+                }
+
+                $this->$property = filter_var($value, $filter, $options);
             }
-            else {
-                $this->$setter[0]($value);
+            catch (\ReflectionException $e) {
+                throw $e;
             }
         }
     }
