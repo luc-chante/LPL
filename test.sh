@@ -1,4 +1,4 @@
 #!/bin/bash
 
 mkdir -p test/coverage
-phpunit
+phpunit --configuration phpunit.xml ./test

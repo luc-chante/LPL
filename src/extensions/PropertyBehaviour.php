@@ -25,7 +25,7 @@ namespace extensions {
          */
         public final function __get($property) {
             try {
-                $getter = static::getPropertyAnnotation("get", $property, true, $this);
+                $getter = static::getPropertyAnnotation("get", $property, true);
                 if (!$getter) {
                     throw new \RuntimeException("The property '$property' is not accessible");
                 }
@@ -53,7 +53,7 @@ namespace extensions {
          */
         public final function __set($property, $value) {
             try {
-                $setter = static::getPropertyAnnotation("set", $property, true, $this);
+                $setter = static::getPropertyAnnotation("set", $property, true);
                 if (!$setter) {
                     throw new \RuntimeException("The property '$property' is not writable");
                 }

@@ -1,23 +1,3 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="http://schema.phpunit.de/4.5/phpunit.xsd"
-         bootstrap="./test/bootstrap.php"
-         colors="auto"
-         verbose="true">
-    <testsuites>
-        <testsuite name="extensions">
-            <directory>./test/extensions</directory>
-        </testsuite>
-    </testsuites>
-    <filter>
-        <blacklist>
-            <file>./test/bootstrap.php</file>
-        </blacklist>
-        <whitelist>
-            <directory>./src</directory>
-        </whitelist>
-    </filter>
-    <logging>
-        <log type="coverage-html" target="./test/coverage" />
-    </logging>
+<?xml version="1.0" encoding="utf-8"?>
+<phpunit bootstrap="./test/bootstrap.php" colors="true" verbose="true">
 </phpunit>

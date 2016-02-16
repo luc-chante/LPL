@@ -41,9 +41,9 @@ namespace extensions {
      * // => true
      * var_dump(ExampleClass::getClassAnnotation("Test"));
      * // => [ 1, "db" => "bd_name", "options" => [ 3 => 2 ] ]
-     * ar_dump(ExampleClass::getClassAnnotation("Nothing"));
+     * var_dump(ExampleClass::getClassAnnotation("Nothing"));
      * // => false
-     * ar_dump(ExampleClass::getClassAnnotation("property"));
+     * var_dump(ExampleClass::getClassAnnotation("property"));
      * // => false
      * ```
 	 */
@@ -58,11 +58,11 @@ namespace extensions {
 		 *
 		 * @return bool|array
 		 */
-		public static function getClassAnnotation($annotation, $recursive = false, \stdClass $context = null) {
+		public static function getClassAnnotation($annotation, $recursive = false) {
 			$class = new \ReflectionClass(get_called_class());
 			
 			do {
-				$result = static::getAnnotation($class, $annotation, $context);
+				$result = static::getAnnotation($class, $annotation);
 				$class = $class->getParentClass();
 			} while ($result === false && $class && $recursive);
 			
@@ -79,12 +79,12 @@ namespace extensions {
 		 *
 		 * @return bool|array
 		 */
-		public static function getPropertyAnnotation($annotation, $property, $recursive = false, \stdClass $context = null) {
+		public static function getPropertyAnnotation($annotation, $property, $recursive = false) {
 			$class = new \ReflectionClass(get_called_class());
 			
 			do {
 				$reflector = $class->getProperty($property);
-				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation, $context);
+				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation);
 				$class = $class->getParentClass();
 			} while ($result === false && $class && $recursive);
 			
@@ -101,12 +101,12 @@ namespace extensions {
 		 *
 		 * @return bool|array
 		 */
-		public static function getMethodAnnotation($annotation, $method, $recursive = false, \stdClass $context = null) {
+		public static function getMethodAnnotation($annotation, $method, $recursive = false) {
 			$class = new \ReflectionClass(get_called_class());
 			
 			do {
 				$reflector = $class->getMethod($method);
-				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation, $context);
+				$result = $reflector->class !== $class->name ? false : static::getAnnotation($reflector, $annotation);
 				$class = $class->getParentClass();
 			} while ($result === false && $class && $recursive);
 
@@ -121,7 +121,7 @@ namespace extensions {
 		 *
 		 * @return mixed
 		 */
-		private static function getAnnotation(\Reflector $reflector, $annotation, \stdClass $context) {
+		private static function getAnnotation(\Reflector $reflector, $annotation) {
             $doc_comment = str_replace("\r", "", substr($reflector->getDocComment(), 2, -2));
 
             $varname  = '(["\']?)[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\g{-1}';
@@ -130,8 +130,7 @@ namespace extensions {
             $integer  = '[+-]?(?:0|[1-9]\d*|0[xX][0-9a-fA-F]+|0b[01]+|0[0-7]+)';
             $float    = '[+-]?(?:\d+|\d*\.\d+|\d+\.\d*)(?:[eE][+-]?\d+)?';
             $constant = '[a-zA-Z_]\w*(::[a-zA-Z_]\w*)?';
-            $variable = '\\$context';
-            $scalar   = implode("|", [ $string1, $string2, $integer, $float, $constant, $variable ]);
+            $scalar   = implode("|", [ $string1, $string2, $integer, $float, $constant ]);
 
             $index = "($varname|$constant)";
             $item  = "[ \t]*(${index}[ \t]*=>[ \t]*)?($scalar|(?&array))[ \t]*";
